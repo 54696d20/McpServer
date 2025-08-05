@@ -1,0 +1,209 @@
+@page "/tasks"
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject HttpClient Http
+
+<PageTitle>Task Management - MCP Task Manager</PageTitle>
+
+<MudText Typo="Typo.h3" Class="mb-4">Task Management</MudText>
+
+<MudGrid>
+    <!-- Filters and Actions -->
+    <MudItem xs="12">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudSelect T="string" Label="Status Filter" 
+                          @bind-Value="_statusFilter" 
+                          Variant="Variant.Outlined" 
+                          Style="min-width: 150px;">
+                    <MudSelectItem Value="@("all")">All</MudSelectItem>
+                    <MudSelectItem Value="@("pending")">Pending</MudSelectItem>
+                    <MudSelectItem Value="@("in-progress")">In Progress</MudSelectItem>
+                    <MudSelectItem Value="@("completed")">Completed</MudSelectItem>
+                </MudSelect>
+                
+                <MudSpacer />
+                
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="OpenAddTaskDialog">
+                    Add Task
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    
+    <!-- Tasks Table -->
+    <MudItem xs="12">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudTable Items="@_filteredTasks" Dense="true" Hover="true" Loading="@_loading">
+                <HeaderContent>
+                    <MudTh>Title</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Priority</MudTh>
+                    <MudTh>Due Date</MudTh>
+                    <MudTh>Created</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <MudText Typo="Typo.body1">@context.Title</MudText>
+                        @if (!string.IsNullOrEmpty(context.Description))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @context.Description
+                            </MudText>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        <MudChip Color="@GetStatusColor(context.Status)" Size="Size.Small">
+                            @context.Status
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <MudChip Color="@GetPriorityColor(context.Priority)" Size="Size.Small">
+                            @context.Priority
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        @if (context.DueDate.HasValue)
+                        {
+                            <MudText Typo="Typo.body2">@context.DueDate.Value.ToShortDateString()</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">No due date</MudText>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        <MudText Typo="Typo.caption">@context.CreatedAt.ToShortDateString()</MudText>
+                    </MudTd>
+                    <MudTd>
+                        <MudStack Row="true" Spacing="1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                          Size="Size.Small" 
+                                          Color="Color.Primary"
+                                          OnClick="@(() => OpenEditTaskDialog(context))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                          Size="Size.Small" 
+                                          Color="Color.Error"
+                                          OnClick="@(() => DeleteTask(context))" />
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<TaskItem> _tasks = new();
+    private List<TaskItem> _filteredTasks => _tasks
+        .Where(t => _statusFilter == "all" || t.Status == _statusFilter)
+        .ToList();
+    private string _statusFilter = "all";
+    private bool _loading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTasks();
+    }
+
+    private async Task LoadTasks()
+    {
+        _loading = true;
+        try
+        {
+            var response = await Http.GetFromJsonAsync<TaskResponse>("api/task/tasks");
+            if (response?.Success == true && response.Tasks != null)
+            {
+                _tasks = response.Tasks;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading tasks: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenAddTaskDialog()
+    {
+        var parameters = new DialogParameters();
+        var dialog = await DialogService.ShowAsync<McpServer.Client.UI.Client.Components.TaskDialog>("Add New Task", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            await LoadTasks();
+            Snackbar.Add("Task added successfully!", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditTaskDialog(TaskItem task)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Task"] = task
+        };
+        var dialog = await DialogService.ShowAsync<McpServer.Client.UI.Client.Components.TaskDialog>("Edit Task", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            await LoadTasks();
+            Snackbar.Add("Task updated successfully!", Severity.Success);
+        }
+    }
+
+    private async Task DeleteTask(TaskItem task)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Delete Task",
+            $"Are you sure you want to delete '{task.Title}'?",
+            yesText: "Delete",
+            noText: "Cancel"
+        );
+        
+        if (confirm == true)
+        {
+            try
+            {
+                var response = await Http.DeleteAsync($"api/task/tasks/{task.Id}");
+                if (response.IsSuccessStatusCode)
+                {
+                    _tasks.Remove(task);
+                    Snackbar.Add("Task deleted successfully!", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("Error deleting task", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "pending" => Color.Warning,
+        "completed" => Color.Success,
+        "in-progress" => Color.Info,
+        _ => Color.Default
+    };
+
+             private Color GetPriorityColor(string priority) => priority switch
+         {
+             "high" => Color.Error,
+             "medium" => Color.Warning,
+             "low" => Color.Success,
+             _ => Color.Default
+         };
+     } 

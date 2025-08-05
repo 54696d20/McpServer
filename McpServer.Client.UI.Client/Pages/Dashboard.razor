@@ -1,0 +1,182 @@
+@page "/dashboard"
+@using McpServer.Client.UI.Client.Models
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Dashboard - MCP Task Manager</PageTitle>
+
+<MudText Typo="Typo.h3" Class="mb-4">Dashboard</MudText>
+
+<MudGrid>
+    <!-- Task Statistics Cards -->
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack>
+                <MudText Typo="Typo.h4" Color="Color.Primary">@_totalTasks</MudText>
+                <MudText Typo="Typo.body2">Total Tasks</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack>
+                <MudText Typo="Typo.h4" Color="Color.Warning">@_pendingTasks</MudText>
+                <MudText Typo="Typo.body2">Pending</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack>
+                <MudText Typo="Typo.h4" Color="Color.Success">@_completedTasks</MudText>
+                <MudText Typo="Typo.body2">Completed</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack>
+                <MudText Typo="Typo.h4" Color="Color.Error">@_overdueTasks</MudText>
+                <MudText Typo="Typo.body2">Overdue</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    
+    <!-- Quick Actions -->
+    <MudItem xs="12">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h5" Class="mb-3">Quick Actions</MudText>
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Href="tasks">
+                    Add New Task
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" 
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.Chat"
+                           Href="chat">
+                    Chat with AI
+                </MudButton>
+                                     <MudButton Variant="Variant.Outlined" 
+                                Color="Color.Info"
+                                StartIcon="@Icons.Material.Filled.Refresh"
+                                OnClick="LoadDashboardData">
+                         Refresh
+                     </MudButton>
+                     
+                     <MudButton Variant="Variant.Outlined" 
+                                Color="Color.Warning"
+                                StartIcon="@Icons.Material.Filled.BugReport"
+                                OnClick="TestApiCall">
+                         Test API
+                     </MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    
+    <!-- Recent Tasks -->
+    <MudItem xs="12">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h5" Class="mb-3">Recent Tasks</MudText>
+            @if (_recentTasks?.Any() == true)
+            {
+                <MudList>
+                    @foreach (var task in _recentTasks.Take(5))
+                    {
+                        <MudListItem>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudChip Color="@GetStatusColor(task.Status)" Size="Size.Small">
+                                    @task.Status
+                                </MudChip>
+                                <MudText Typo="Typo.body1">@task.Title</MudText>
+                                @if (task.DueDate.HasValue)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Due: @task.DueDate.Value.ToShortDateString()
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">No tasks found</MudText>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private int _totalTasks = 0;
+    private int _pendingTasks = 0;
+    private int _completedTasks = 0;
+    private int _overdueTasks = 0;
+    private List<TaskItem>? _recentTasks;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            Console.WriteLine("Loading dashboard data from API...");
+            var response = await Http.GetFromJsonAsync<TaskResponse>("api/task/tasks");
+            Console.WriteLine($"API Response: Success={response?.Success}, Tasks Count={response?.Tasks?.Count}");
+            
+            if (response?.Success == true && response.Tasks != null)
+            {
+                _recentTasks = response.Tasks.OrderByDescending(t => t.CreatedAt).ToList();
+                _totalTasks = response.Tasks.Count;
+                _pendingTasks = response.Tasks.Count(t => t.Status == "pending");
+                _completedTasks = response.Tasks.Count(t => t.Status == "completed");
+                _overdueTasks = response.Tasks.Count(t => t.Status == "pending" && t.DueDate < DateTime.Now);
+                
+                Console.WriteLine($"Dashboard updated: Total={_totalTasks}, Pending={_pendingTasks}, Completed={_completedTasks}, Overdue={_overdueTasks}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+            Snackbar.Add($"Error loading dashboard data: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task TestApiCall()
+    {
+        try
+        {
+            Snackbar.Add("Testing API call...", Severity.Info);
+            var response = await Http.GetFromJsonAsync<TaskResponse>("api/task/tasks");
+            if (response?.Success == true)
+            {
+                Snackbar.Add($"API Test Success! Found {response.Tasks?.Count ?? 0} tasks", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("API Test Failed: No response", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"API Test Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+             private Color GetStatusColor(string status) => status switch
+         {
+             "pending" => Color.Warning,
+             "completed" => Color.Success,
+             "in-progress" => Color.Info,
+             _ => Color.Default
+         };
+     } 

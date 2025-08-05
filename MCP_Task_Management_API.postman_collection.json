@@ -1,0 +1,317 @@
+{
+	"info": {
+		"_postman_id": "mcp-task-management-api",
+		"name": "MCP Task Management API",
+		"description": "Collection for testing the MCP Task Management API with Ollama LLM integration",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/health",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"health"
+					]
+				},
+				"description": "Check if the API is running and healthy"
+			},
+			"response": []
+		},
+		{
+			"name": "Chat - Create Task",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"message\": \"Add a task to buy groceries tomorrow\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/task/chat",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"task",
+						"chat"
+					]
+				},
+				"description": "Test creating a task using natural language"
+			},
+			"response": []
+		},
+		{
+			"name": "Chat - Read Tasks",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"message\": \"Show me all tasks\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/task/chat",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"task",
+						"chat"
+					]
+				},
+				"description": "Test reading tasks using natural language"
+			},
+			"response": []
+		},
+		{
+			"name": "Chat - Create High Priority Task",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"message\": \"Create a high priority task to finish the project by Friday\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/task/chat",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"task",
+						"chat"
+					]
+				},
+				"description": "Test creating a high priority task with specific date"
+			},
+			"response": []
+		},
+		{
+			"name": "Chat - Update Task",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"message\": \"Mark the grocery task as completed\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/task/chat",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"task",
+						"chat"
+					]
+				},
+				"description": "Test updating a task status using natural language"
+			},
+			"response": []
+		},
+		{
+			"name": "Chat - Delete Task",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"message\": \"Delete the grocery task\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/task/chat",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"task",
+						"chat"
+					]
+				},
+				"description": "Test deleting a task using natural language"
+			},
+			"response": []
+		},
+		{
+			"name": "Direct API - Get All Tasks",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/task/tasks?filter=all",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"task",
+						"tasks"
+					],
+					"query": [
+						{
+							"key": "filter",
+							"value": "all"
+						}
+					]
+				},
+				"description": "Get all tasks directly via API"
+			},
+			"response": []
+		},
+		{
+			"name": "Direct API - Get Pending Tasks",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/task/tasks?filter=pending",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"task",
+						"tasks"
+					],
+					"query": [
+						{
+							"key": "filter",
+							"value": "pending"
+						}
+					]
+				},
+				"description": "Get only pending tasks"
+			},
+			"response": []
+		},
+		{
+			"name": "Direct API - Create Task",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"title\": \"Test Task via Direct API\",\n  \"description\": \"This task was created directly via the API\",\n  \"priority\": \"high\",\n  \"status\": \"pending\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/task/tasks",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"task",
+						"tasks"
+					]
+				},
+				"description": "Create a task directly via API"
+			},
+			"response": []
+		},
+		{
+			"name": "Direct API - Update Task",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"status\": \"completed\",\n  \"priority\": \"medium\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/task/tasks/{{taskId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"task",
+						"tasks",
+						"{{taskId}}"
+					]
+				},
+				"description": "Update a task directly via API (replace {{taskId}} with actual task ID)"
+			},
+			"response": []
+		},
+		{
+			"name": "Direct API - Delete Task",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/task/tasks/{{taskId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"task",
+						"tasks",
+						"{{taskId}}"
+					]
+				},
+				"description": "Delete a task directly via API (replace {{taskId}} with actual task ID)"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5001",
+			"type": "string"
+		},
+		{
+			"key": "taskId",
+			"value": "your-task-id-here",
+			"type": "string"
+		}
+	]
+} 

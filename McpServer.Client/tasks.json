@@ -1,0 +1,13 @@
+[
+  {
+    "Id": "aea7cb3c-ed2e-4e28-8276-21349a57fd1a",
+    "Title": "Buy groceries",
+    "Description": null,
+    "DueDateString": "tomorrow",
+    "DueDate": "2025-08-05T00:00:00-04:00",
+    "Priority": "medium",
+    "Status": "pending",
+    "CreatedAt": "2025-08-04T14:55:57.580425-04:00",
+    "CompletedAt": null
+  }
+]

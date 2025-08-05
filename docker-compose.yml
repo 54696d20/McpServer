@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # Ollama LLM Service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mcp-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+
+  # Task Service Backend
+  task-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-task-service
+    ports:
+      - "5001:5000"
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - ASPNETCORE_ENVIRONMENT=Production
+      - MCP_OLLAMA_MODEL=llama2:7b
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - task_data:/app/data
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+  # Blazor UI Frontend
+  blazor-ui:
+    build:
+      context: ./McpServer.Client.UI.Client
+      dockerfile: Dockerfile
+    container_name: mcp-blazor-ui
+    ports:
+      - "8080:80"
+    depends_on:
+      - task-service
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+    driver: local
+  task_data:
+    driver: local
+
+networks:
+  default:
+    name: mcp-network 

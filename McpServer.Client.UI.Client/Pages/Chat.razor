@@ -1,0 +1,389 @@
+     @page "/chat"
+     @inject ISnackbar Snackbar
+     @inject HttpClient Http
+     @inject IJSRuntime JS
+
+<PageTitle>AI Chat - MCP Task Manager</PageTitle>
+
+<MudText Typo="Typo.h3" Class="mb-4">AI Chat</MudText>
+
+<MudGrid>
+    <!-- Chat Interface -->
+    <MudItem xs="12" md="8">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack>
+                <MudText Typo="Typo.h6" Class="mb-3">Conversation</MudText>
+                
+                                     <!-- Chat Messages -->
+                     <div @ref="_chatContainer" style="height: 400px; overflow-y: auto; background-color: #f5f5f5; padding: 12px; border-radius: 4px;">
+                         @if (_messages?.Any() == true)
+                         {
+                             @foreach (var message in _messages)
+                             {
+                                 <div style="margin-bottom: 12px; display: flex; justify-content: @(message.IsUser ? "flex-end" : "flex-start");">
+                                     <div style="max-width: 70%; padding: 12px; border-radius: 8px; background-color: @(message.IsUser ? "#e3f2fd" : "#f3e5f5"); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                         <div style="font-size: 14px; line-height: 1.4; margin-bottom: 4px;">@message.Content</div>
+                                         <div style="font-size: 11px; color: #666;">@message.Timestamp.ToShortTimeString()</div>
+                                     </div>
+                                 </div>
+                             }
+                         }
+                         else
+                         {
+                             <div style="text-align: center; color: #666; font-size: 14px; padding: 20px;">
+                                 Start a conversation with the AI to manage your tasks!
+                             </div>
+                         }
+                     </div>
+                
+                <!-- Input Area -->
+                <MudStack Row="true" Spacing="2">
+                    <MudTextField @ref="_messageField"
+                                 @bind-Value="_messageInput"
+                                 Label="Type your message..." 
+                                 Variant="Variant.Outlined"
+                                 Immediate="true"
+                                 Lines="2"
+                                 OnKeyDown="@(async (e) => { if (e.Key == "Enter" && !e.ShiftKey) { await SendMessage(); } })" />
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Primary"
+                              OnClick="SendMessage"
+                              Disabled="@(_isLoading || string.IsNullOrWhiteSpace(_messageInput))"
+                              Type="Button">
+                        @if (_isLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Send" />
+                        }
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    
+    <!-- Quick Actions -->
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack>
+                <MudText Typo="Typo.h6" Class="mb-3">Quick Actions</MudText>
+                
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Primary"
+                          StartIcon="@Icons.Material.Filled.Add"
+                          OnClick="@(() => SendQuickMessage("Add a new task for tomorrow to review the project documentation"))"
+                          TabIndex="-1">
+                    Add Task
+                </MudButton>
+                
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Secondary"
+                          StartIcon="@Icons.Material.Filled.List"
+                          OnClick="@(() => SendQuickMessage("Show me all my pending tasks"))"
+                          TabIndex="-1">
+                    List Tasks
+                </MudButton>
+                
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Info"
+                          StartIcon="@Icons.Material.Filled.Schedule"
+                          OnClick="@(() => SendQuickMessage("What are all the tasks due this week only?"))"
+                          TabIndex="-1">who
+                    Due This Week
+                </MudButton>
+                
+                <MudDivider Class="my-3" />
+                
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Try asking:
+                </MudText>
+                
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    • "Create a task to call the client tomorrow"
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    • "Mark the documentation task as completed"
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    • "Show me high priority tasks"
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    • "What's my task summary for today?"
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+     @code {
+         private List<ChatMessage> _messages = new();
+         private string _messageInput = "";
+         private bool _isLoading = false;
+         private ElementReference _chatContainer;
+         private MudTextField<string> _messageField;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialize with welcome message
+        _messages = new List<ChatMessage>
+        {
+            new ChatMessage
+            {
+                Content = "Hello! I'm your AI assistant. I can help you manage tasks, create new ones, and answer questions about your project. What would you like to do?",
+                IsUser = false,
+                Timestamp = DateTime.Now
+            }
+        };
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_messageInput) || _isLoading)
+            return;
+
+        var userMessage = _messageInput.Trim();
+        
+        // Clear input immediately
+        _messageInput = "";
+        
+        // Add user message
+        _messages = _messages.Concat(new[] { new ChatMessage
+        {
+            Content = userMessage,
+            IsUser = true,
+            Timestamp = DateTime.Now
+        }}).ToList();
+        
+        // Trigger UI refresh
+        StateHasChanged();
+        
+        // Scroll after adding user message
+        await ScrollToBottom();
+
+        // Set loading state after UI updates
+        _isLoading = true;
+
+        try
+        {
+            // Send to API for AI processing
+            var request = new { message = userMessage };
+            var response = await Http.PostAsJsonAsync("api/task/chat", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"API Response Status: {response.StatusCode}");
+                Console.WriteLine($"API Response Content: {responseContent}");
+                Console.WriteLine($"API Response Length: {responseContent.Length}");
+                
+                // Check if response contains tasks (indicating it's a TaskResponse)
+                if (responseContent.Contains("\"tasks\":") || responseContent.Contains("\"task\":"))
+                {
+                    Console.WriteLine("Response contains tasks, parsing as TaskResponse...");
+                    try
+                    {
+                        var taskResult = await response.Content.ReadFromJsonAsync<TaskResponse>();
+                        if (taskResult?.Success == true)
+                        {
+                            var responseText = taskResult.Message ?? "Task operation completed successfully.";
+                            if (taskResult.Tasks != null && taskResult.Tasks.Any())
+                            {
+                                responseText += "\n\nTasks:\n";
+                                foreach (var task in taskResult.Tasks)
+                                {
+                                    responseText += $"• {task.Title} ({task.Status}, Priority: {task.Priority})";
+                                    if (task.DueDate.HasValue)
+                                        responseText += $" - Due: {task.DueDate.Value.ToShortDateString()}";
+                                    responseText += "\n";
+                                }
+                            }
+                            _messages = _messages.Concat(new[] { new ChatMessage
+                            {
+                                Content = responseText,
+                                IsUser = false,
+                                Timestamp = DateTime.Now
+                            }}).ToList();
+                            
+                            // Trigger UI refresh and scroll after adding AI response
+                            StateHasChanged();
+                            await ScrollToBottom();
+                        }
+                        else
+                        {
+                            _messages = _messages.Concat(new[] { new ChatMessage
+                            {
+                                Content = taskResult?.Message ?? "Sorry, I couldn't process your request.",
+                                IsUser = false,
+                                Timestamp = DateTime.Now
+                            }}).ToList();
+                            
+                            // Trigger UI refresh and scroll after adding AI response
+                            StateHasChanged();
+                            await ScrollToBottom();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"TaskResponse parsing failed: {ex.Message}");
+                        _messages = _messages.Concat(new[] { new ChatMessage
+                        {
+                            Content = "Sorry, I couldn't process your request.",
+                            IsUser = false,
+                            Timestamp = DateTime.Now
+                        }}).ToList();
+                        
+                        // Trigger UI refresh and scroll after adding error message
+                        StateHasChanged();
+                        await ScrollToBottom();
+                    }
+                }
+                else
+                {
+                    // Try to parse as ChatResponse
+                    Console.WriteLine("Attempting to parse as ChatResponse...");
+                    try
+                    {
+                        var chatResult = await response.Content.ReadFromJsonAsync<ChatResponse>();
+                        Console.WriteLine($"ChatResponse parsed: {chatResult?.Response != null}");
+                        if (chatResult?.Response != null)
+                        {
+                            Console.WriteLine($"Adding ChatResponse message: {chatResult.Response}");
+                            _messages = _messages.Concat(new[] { new ChatMessage
+                            {
+                                Content = chatResult.Response,
+                                IsUser = false,
+                                Timestamp = DateTime.Now
+                            }}).ToList();
+                            
+                            // Trigger UI refresh and scroll after adding AI response
+                            StateHasChanged();
+                            await ScrollToBottom();
+                        }
+                        else
+                        {
+                            Console.WriteLine("ChatResponse.Response is null, adding error message");
+                            _messages = _messages.Concat(new[] { new ChatMessage
+                            {
+                                Content = "Sorry, I couldn't process your request.",
+                                IsUser = false,
+                                Timestamp = DateTime.Now
+                            }}).ToList();
+                            
+                            // Scroll after adding error message
+                            await ScrollToBottom();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"ChatResponse parsing failed: {ex.Message}");
+                        _messages = _messages.Concat(new[] { new ChatMessage
+                        {
+                            Content = "Sorry, I couldn't process your request.",
+                            IsUser = false,
+                            Timestamp = DateTime.Now
+                        }}).ToList();
+                        
+                        // Trigger UI refresh and scroll after adding error message
+                        StateHasChanged();
+                        await ScrollToBottom();
+                    }
+                }
+            }
+            else
+            {
+                _messages = _messages.Concat(new[] { new ChatMessage
+                {
+                    Content = "Sorry, there was an error processing your request.",
+                    IsUser = false,
+                    Timestamp = DateTime.Now
+                }}).ToList();
+                
+                // Trigger UI refresh and scroll after adding error message
+                StateHasChanged();
+                await ScrollToBottom();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+                     finally
+             {
+                 _isLoading = false;
+                 Console.WriteLine($"SendMessage: Set loading to false in finally block");
+                 StateHasChanged(); // Ensure UI updates when loading state changes
+                 await ScrollToBottom();
+                 
+                 // Focus back on the message field
+                 if (_messageField != null)
+                 {
+                     await Task.Delay(100);
+                     await _messageField.FocusAsync();
+                 }
+             }
+         }
+
+         private async Task ScrollToBottom()
+         {
+             await Task.Delay(300); // Increased delay to ensure DOM is updated
+             try
+             {
+                 Console.WriteLine("Attempting to scroll to bottom...");
+                 await JS.InvokeVoidAsync("scrollToBottom", _chatContainer);
+                 Console.WriteLine("Scroll to bottom completed");
+             }
+             catch (Exception ex)
+             {
+                 Console.WriteLine($"Scroll to bottom failed: {ex.Message}");
+             }
+         }
+
+    private async Task SendQuickMessage(string message)
+    {
+        _messageInput = message;
+        await SendMessage();
+    }
+
+    private string GetMockResponse(string userMessage)
+    {
+        var lowerMessage = userMessage.ToLower();
+        
+        if (lowerMessage.Contains("add") && lowerMessage.Contains("task"))
+        {
+            return "I've created a new task for you! You can view and manage all your tasks in the Task Management section.";
+        }
+        else if (lowerMessage.Contains("list") || lowerMessage.Contains("show") || lowerMessage.Contains("pending"))
+        {
+            return "Here are your current tasks:\n• Complete project documentation (pending, due in 2 days)\n• Review code changes (completed)\n• Setup development environment (in-progress, due tomorrow)";
+        }
+        else if (lowerMessage.Contains("due") && lowerMessage.Contains("week"))
+        {
+            return "Tasks due this week:\n• Setup development environment (due tomorrow)\n• Complete project documentation (due in 2 days)";
+        }
+        else if (lowerMessage.Contains("mark") && lowerMessage.Contains("completed"))
+        {
+            return "I've marked that task as completed for you!";
+        }
+        else if (lowerMessage.Contains("high priority"))
+        {
+            return "High priority tasks:\n• Complete project documentation (pending)\n• Setup development environment (in-progress)";
+        }
+        else if (lowerMessage.Contains("summary"))
+        {
+            return "Today's summary:\n• Total tasks: 3\n• Pending: 1\n• In progress: 1\n• Completed: 1\n• Overdue: 0";
+        }
+        else
+        {
+            return "I understand you're asking about: \"" + userMessage + "\". I can help you manage tasks, create new ones, or provide information about your project. What specific action would you like me to take?";
+        }
+    }
+
+             public class ChatMessage
+         {
+             public string Content { get; set; } = "";
+             public bool IsUser { get; set; }
+             public DateTime Timestamp { get; set; }
+         }
+     } 

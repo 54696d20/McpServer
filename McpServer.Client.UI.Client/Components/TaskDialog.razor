@@ -1,0 +1,147 @@
+@inject ISnackbar Snackbar
+@inject HttpClient Http
+
+<MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true">
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_task.Title" 
+                                 Label="Title" 
+                                 Required="true" 
+                                 RequiredError="Title is required!"
+                                 Variant="Variant.Outlined" 
+                                 Class="mb-4" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_task.Description" 
+                                 Label="Description" 
+                                 Variant="Variant.Outlined" 
+                                 Lines="4"
+                                 Class="mb-4" />
+                </MudItem>
+                
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_task.DueDate" 
+                                  Label="Due Date" 
+                                  Variant="Variant.Outlined"
+                                  Class="mb-4" />
+                </MudItem>
+                
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string" @bind-Value="_task.Priority" 
+                              Label="Priority" 
+                              Variant="Variant.Outlined"
+                              Class="mb-4">
+                        <MudSelectItem Value="@("low")">Low</MudSelectItem>
+                        <MudSelectItem Value="@("medium")">Medium</MudSelectItem>
+                        <MudSelectItem Value="@("high")">High</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudSelect T="string" @bind-Value="_task.Status" 
+                              Label="Status" 
+                              Variant="Variant.Outlined"
+                              Class="mb-4">
+                        <MudSelectItem Value="@("pending")">Pending</MudSelectItem>
+                        <MudSelectItem Value="@("in-progress")">In Progress</MudSelectItem>
+                        <MudSelectItem Value="@("completed")">Completed</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" 
+                  OnClick="Cancel"
+                  Class="mr-2">
+            Cancel
+        </MudButton>
+        <MudButton Color="Color.Primary" 
+                  Variant="Variant.Filled" 
+                  OnClick="Submit" 
+                  Disabled="@(!_isValid)"
+                  StartIcon="@Icons.Material.Filled.Save">
+            @(_isEditMode ? "Update Task" : "Create Task")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
+    
+    [Parameter] public TaskItem? Task { get; set; }
+    
+    private MudForm _form = default!;
+    private bool _isValid;
+    private bool _isEditMode => Task != null;
+    
+    private TaskItem _task = new()
+    {
+        Title = "",
+        Description = "",
+        Priority = "medium",
+        Status = "pending",
+        CreatedAt = DateTime.Now
+    };
+
+    protected override void OnInitialized()
+    {
+        if (_isEditMode && Task != null)
+        {
+            _task = new TaskItem
+            {
+                Id = Task.Id,
+                Title = Task.Title,
+                Description = Task.Description,
+                DueDate = Task.DueDate,
+                Priority = Task.Priority,
+                Status = Task.Status,
+                CreatedAt = Task.CreatedAt,
+                CompletedAt = Task.CompletedAt
+            };
+        }
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        
+        if (_form.IsValid)
+        {
+            try
+            {
+                if (_isEditMode)
+                {
+                    // Update existing task
+                    var response = await Http.PutAsJsonAsync($"api/task/tasks/{_task.Id}", _task);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Snackbar.Add("Error updating task", Severity.Error);
+                        return;
+                    }
+                }
+                else
+                {
+                    // Create new task
+                    var response = await Http.PostAsJsonAsync("api/task/tasks", _task);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Snackbar.Add("Error creating task", Severity.Error);
+                        return;
+                    }
+                }
+                
+                MudDialog.Close(DialogResult.Ok(_task));
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+        private void Cancel() => MudDialog.Cancel();
+} 
