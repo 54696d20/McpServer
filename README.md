@@ -1,6 +1,6 @@
 # MCP Task Management System
 
-A complete **Model Context Protocol (MCP)** implementation with local LLM integration using .NET, MCPSharp, and Ollama. This system provides a conversational AI-powered task management application that runs entirely locally.
+A complete **Model Context Protocol (MCP)** implementation with local LLM integration using .NET, MCPSharp, and Ollama. This system provides a conversational AI-powered task management application with a modern Blazor WASM UI that runs entirely locally.
 
 ## 🏗️ Architecture
 
@@ -9,6 +9,7 @@ A complete **Model Context Protocol (MCP)** implementation with local LLM integr
 │   Blazor WASM   │    │   Ollama LLM    │    │   Task Service  │
 │   (Frontend)    │◄──►│   (Container)   │◄──►│   (Backend)     │
 │   Port: 8080    │    │   Port: 11434   │    │   Port: 5000    │
+│   MudBlazor UI  │    │   Local Models  │    │   REST API      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -39,6 +40,10 @@ docker-compose up --build -d
 
 ### Access Your Application
 - **🌐 Blazor UI**: http://localhost:8080
+  - **Dashboard**: Task statistics and overview
+  - **Task Management**: Create, edit, delete, and filter tasks
+  - **AI Chat**: Natural language task management with Ollama LLM
+  - **Dark Mode**: Toggle between light and dark themes (dark mode default)
 - **🔧 Task Service API**: http://localhost:5001
 - **🤖 Ollama API**: http://localhost:11434
 
@@ -115,24 +120,31 @@ dotnet run
 ## 🎯 How It Works
 
 ### Task Management Flow
-1. **User Input**: Natural language task request
+1. **User Input**: Natural language task request via Blazor UI or API
 2. **LLM Processing**: Ollama receives the request and responds with structured JSON
 3. **Task Operations**: System performs CRUD operations on tasks
-4. **Response**: Results displayed to user
+4. **Response**: Results displayed in the modern UI
+
+### UI Features
+- **📊 Dashboard**: Real-time task statistics and overview
+- **📝 Task Management**: Full CRUD operations with filtering and sorting
+- **💬 AI Chat**: Natural language interface for task management
+- **🌙 Dark Mode**: Beautiful dark theme (default) with light mode toggle
+- **📱 Responsive**: Works on desktop, tablet, and mobile devices
 
 ### Example Interactions
 ```
 User: "Add a task to buy groceries tomorrow"
 LLM: { "operation": "create", "task": { "title": "Buy groceries", "dueDate": "tomorrow" } }
-Result: Task created successfully
+Result: Task created successfully and displayed in UI
 
 User: "Show me all tasks"
 LLM: { "operation": "read", "filter": "all" }
-Result: Display all tasks
+Result: Tasks displayed in table with filtering options
 
 User: "Mark the grocery task as done"
 LLM: { "operation": "update", "taskId": "123", "task": { "status": "completed" } }
-Result: Task updated
+Result: Task updated and UI refreshed
 ```
 
 ## 📁 Project Structure
@@ -142,7 +154,12 @@ McpServer/
 ├── McpServer.LLM/           # LLM integration using Ollama HTTP API
 ├── McpServer.Client/        # Task management client and API
 ├── McpServer.Server/        # MCP server implementation
-├── McpServer.UI/            # Blazor WASM UI application
+├── McpServer.Client.UI.Client/  # Blazor WASM UI with MudBlazor
+│   ├── Pages/               # Application pages (Dashboard, Tasks, Chat)
+│   ├── Layout/              # Main layout and navigation
+│   ├── Components/          # Reusable UI components
+│   ├── Models/              # Data models and DTOs
+│   └── wwwroot/             # Static assets and configuration
 ├── docker-compose.yml       # Container orchestration
 ├── Dockerfile              # Task service container
 ├── start.sh                # Linux/macOS startup script
@@ -198,6 +215,8 @@ docker-compose logs -f blazor-ui
 1. **UI not loading**: Check if Blazor container is running
 2. **API errors**: Check task-service logs
 3. **LLM errors**: Verify Ollama is healthy
+4. **Dark mode not working**: Clear browser cache and refresh
+5. **Chat not responding**: Check if Ollama model is loaded and responding
 
 ### Using Different Models
 ```bash
@@ -227,6 +246,12 @@ docker-compose restart task-service
 - **Cross-platform**: Works on Windows, Mac, Linux
 - **Extensible**: Easy to add new features
 
+### Modern UI Experience
+- **Beautiful interface**: Material Design with MudBlazor
+- **Dark mode**: Easy on the eyes with toggle option
+- **Responsive design**: Works on all device sizes
+- **Real-time updates**: Instant feedback and auto-scrolling chat
+
 ## 🔮 Future Enhancements
 
 - **More LLM Models**: Support for different model types
@@ -234,6 +259,10 @@ docker-compose restart task-service
 - **User Authentication**: Multi-user support
 - **Mobile App**: React Native or Flutter companion
 - **API Extensions**: Webhook support, external integrations
+- **Task Automation**: .NET Orleans integration for automated task processing
+- **Enhanced UI**: More themes, customizations, and accessibility features
+- **Data Persistence**: Database integration (SQLite, PostgreSQL)
+- **Export/Import**: Task backup and sharing capabilities
 
 ## 📄 License
 
